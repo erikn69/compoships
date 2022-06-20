@@ -77,7 +77,7 @@ class BelongsTo extends BaseBelongsTo
                 )) === [null];
 
                 foreach ($this->ownerKey as $index => $key) {
-                    $fullKey = $table.'.'.$key;
+                    $fullKey = $this->sanitizeKey($table, $key);
 
                     if (array_key_exists($this->foreignKey[$index], $childAttributes)) {
                         $this->query->where($fullKey, '=', $this->child->{$this->foreignKey[$index]});
@@ -106,7 +106,7 @@ class BelongsTo extends BaseBelongsTo
             $keys = [];
 
             foreach ($this->ownerKey as $key) {
-                $keys[] = $this->related->getTable().'.'.$key;
+                $keys[] = $this->sanitizeKey($this->related->getTable(), $key);
             }
 
             // method \Awobaz\Compoships\Database\Eloquent\Relations\HasOneOrMany::whereInMethod
@@ -228,7 +228,7 @@ class BelongsTo extends BaseBelongsTo
         foreach ($results as $result) {
             if (is_array($owner)) { //Check for multi-columns relationship
                 $dictKeyValues = array_map(function ($k) use ($result) {
-                    return $result->{$k};
+                    return $result->{$this->getSanitizedKey($k)};
                 }, $owner);
 
                 $dictionary[implode('-', $dictKeyValues)] = $result;
@@ -257,5 +257,44 @@ class BelongsTo extends BaseBelongsTo
         }
 
         return $models;
+    }
+
+    /**
+     * Let be raw expresions
+     *
+     * @param string $table
+     * @param string|Expression $key
+     *
+     * @return string|Expression
+     */
+    protected function sanitizeKey($table, $key)
+    {
+        $grammar = $this->child->getConnection()
+            ->getQueryGrammar();
+
+        return $grammar->isExpression($key)
+            ? $key
+            : $table.'.'.$key;
+    }
+
+    /**
+     * Get key from raw expresions
+     *
+     * @param string|Expression $key
+     *
+     * @return string
+     */
+    protected function getSanitizedKey($key)
+    {
+        $grammar = $this->child->getConnection()
+            ->getQueryGrammar();
+
+        if (! $grammar->isExpression($key)) {
+            return $key;
+        }
+
+        $segments = explode('.', $key->getValue());
+
+        return end($segments);
     }
 }
