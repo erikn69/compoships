@@ -44,7 +44,6 @@ class Builder extends BaseQueryBuilder
                 }
             }
 
-            $inOperator = $not ? 'NOT IN' : 'IN';
             $connection = $this->getConnection();
             $prefix = $connection->getTablePrefix();
             $grammar = $connection->getQueryGrammar();
@@ -68,9 +67,10 @@ class Builder extends BaseQueryBuilder
                             }
                         });
                     }
-                });
+                }, null, null, $boolean.($not ? ' not' : ''));
             }
 
+            $inOperator = $not ? 'NOT IN' : 'IN';
             $columns = implode(', ', array_map(
                 fn ($v) => $grammar->isExpression($v) ? $v->getValue($grammar) : $grammar->wrap($v),
                 $column
