@@ -23,8 +23,9 @@ class Builder extends BaseQueryBuilder
         // Here we implement custom support for multi-column 'IN'
         if (is_array($column)) {
             $inOperator = $not ? 'NOT IN' : 'IN';
-            $prefix = $this->getConnection()->getTablePrefix();
-            $grammar = $this->getConnection()->getQueryGrammar();
+            $connection = $this->getConnection();
+            $prefix = $connection->getTablePrefix();
+            $grammar = $connection->getQueryGrammar();
 
             foreach ($column as &$value) {
                 if (!$grammar->isExpression($value) && !Str::contains($value, '.')) {
@@ -32,7 +33,7 @@ class Builder extends BaseQueryBuilder
                 }
             }
 
-            if ($this->getConnection()->getDriverName() === 'sqlsrv') {
+            if ($connection->getDriverName() === 'sqlsrv') {
                 foreach ($column as $column_number => $column_name) {
                     $column_values = array_unique(Arr::pluck($values, $column_number));
                     $values_placeholders = implode(', ', array_fill(0, count($column_values), '?'));
@@ -41,6 +42,20 @@ class Builder extends BaseQueryBuilder
                 }
 
                 return $this;
+            } elseif (
+                !in_array($connection->getDriverName(), ['sqlite', 'mysql', 'mariadb', 'pgsql']) ||
+                    Arr::some($values, fn ($value) => in_array(null, $value, true))
+            ) {
+                // use a series of OR/AND clauses when optimized row value expressions can't be used
+                return $this->where(function ($query) use ($column, $values) {
+                    foreach ($values as $value) {
+                        $query->orWhere(function ($query) use ($column, $value) {
+                            foreach ($column as $index => $aColumn) {
+                                $query->where($aColumn, $value[$index]);
+                            }
+                        });
+                    }
+                });
             }
 
             $columns = implode(', ', array_map(
