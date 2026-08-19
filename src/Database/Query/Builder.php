@@ -55,7 +55,10 @@ class Builder extends BaseQueryBuilder
                 }
             }
 
-            if (!in_array($connection->getDriverName(), ['sqlite', 'mysql', 'mariadb', 'pgsql'])) {
+            if (
+                !in_array($connection->getDriverName(), ['sqlite', 'mysql', 'mariadb', 'pgsql']) ||
+                    Arr::some($values, fn ($value) => in_array(null, $value, true))
+            ) {
                 // use a series of OR/AND clauses when optimized row value expressions can't be used
                 return $this->where(function ($query) use ($column, $values) {
                     foreach ($values as $value) {
