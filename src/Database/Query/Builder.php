@@ -89,25 +89,24 @@ class Builder extends BaseQueryBuilder
             [$second, $operator] = [$operator, '='];
         }
 
-        // If the column and values are arrays, we will assume it is a multi-columns relationship
-        // and we adjust the 'where' clauses accordingly
-        if (is_array($first) && is_array($second)) {
-            $type = 'Column';
-
-            foreach ($first as $index => $f) {
-                $this->wheres[] = [
-                    'type'     => $type,
-                    'first'    => $f,
-                    'operator' => $operator,
-                    'second'   => $second[$index],
-                    'boolean'  => $boolean,
-
-                ];
-            }
-
-            return $this;
+        if (!is_array($first) || |is_array($second)) {
+            return parent::whereColumn($first, $operator, $second, $boolean);
         }
 
-        return parent::whereColumn($first, $operator, $second, $boolean);
+        // If the column and values are arrays, we will assume it is a multi-columns relationship
+        // and we adjust the 'where' clauses accordingly
+        $type = 'Column';
+
+        foreach ($first as $index => $f) {
+            $this->wheres[] = [
+                'type'     => $type,
+                'first'    => $f,
+                'operator' => $operator,
+                'second'   => $second[$index],
+                'boolean'  => $boolean,
+            ];
+        }
+
+        return $this;
     }
 }
