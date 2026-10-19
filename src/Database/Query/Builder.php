@@ -55,7 +55,7 @@ class Builder extends BaseQueryBuilder
             }
 
             if (
-                !in_array($connection->getDriverName(), ['sqlite', 'mysql', 'mariadb', 'pgsql']) ||
+                in_array($connection->getDriverName(), ['sqlsrv']) ||
                     Arr::some($values, fn ($value) => in_array(null, $value, true))
             ) {
                 // use a series of OR/AND clauses when optimized row value expressions can't be used
