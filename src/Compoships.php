@@ -9,7 +9,9 @@ use Awobaz\Compoships\Database\Grammar\PostgresGrammar;
 use Awobaz\Compoships\Database\Grammar\SQLiteGrammar;
 use Awobaz\Compoships\Database\Grammar\SqlServerGrammar;
 use Awobaz\Compoships\Database\Query\Builder as QueryBuilder;
+use Awobaz\Compoships\Database\Query\Compoships as QueryCompoships;
 use Awobaz\Compoships\Exceptions\InvalidUsageException;
+use Illuminate\Contracts\Database\Query\Builder as BuilderContract;
 use Illuminate\Support\Str;
 
 trait Compoships
@@ -235,6 +237,19 @@ trait Compoships
     protected function newBaseQueryBuilder()
     {
         $connection = $this->getConnection();
+        $builderClass = function_exists('config') ? config('app.builder') : null;
+
+        if (!$builderClass) {
+            $builderClass = QueryBuilder::class;
+        }
+
+        if (!array_key_exists(QueryCompoships::class, class_uses_recursive($builderClass))) {
+            throw new InvalidUsageException("The query builder must use the '".QueryCompoships::class."' trait");
+        }
+
+        if (!is_a($builderClass, BuilderContract::class, true)) {
+            throw new InvalidUsageException("The query builder must implements '".BuilderContract::class."' contract");
+        }
 
         $grammar = match ($connection->getDriverName()) {
             'mysql'   => new MySqlGrammar($connection),
@@ -253,6 +268,6 @@ trait Compoships
             $grammar = $connection->withTablePrefix($grammar);
         }
 
-        return new QueryBuilder($connection, $grammar, $connection->getPostProcessor());
+        return new $builderClass($connection, $grammar, $connection->getPostProcessor());
     }
 }
